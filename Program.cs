@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace LogicAppAdvancedTool
 {
@@ -18,7 +19,6 @@ namespace LogicAppAdvancedTool
 
             try
             {
-                #Test
                 #region For feature testing ONLY run when debug
 #if DEBUG
                 Tools.FeatureTesting();           
@@ -535,15 +535,33 @@ namespace LogicAppAdvancedTool
                 app.Command("CancelRuns", c => {
                     
                     CommandOption workflowNameCO = c.Option("-wf|--workflow", "(Mandatory) Workflow Name", CommandOptionType.SingleValue).IsRequired();
+                    CommandOption startTimeCO = c.Option("-st|--startTime", "(Optional) Start time for cancelling in GMT, format: yyyy-MM-ddTHH:mm:ssZ (can be simplified to yyyy-MM-dd)", CommandOptionType.SingleValue);
+                    CommandOption endTimeCO = c.Option("-et|--endTime", "(Optional) End time for cancelling in GMT, format: yyyy-MM-ddTHH:mm:ssZ (can be simplified to yyyy-MM-dd)", CommandOptionType.SingleValue);
 
                     c.HelpOption("-?");
-                    c.Description = "Cancel all running/waiting instances of a workflow, will cause data lossing for running instances.";
+                    c.Description = "Cancel all running/waiting instances of a workflow, will cause data lossing for running instances. If start time and end time not provided, it will cancel all running instances.";
 
                     c.OnExecute(() =>
                     {
                         string workflowName = workflowNameCO.Value();
+                        string startTime = startTimeCO.Value() ?? "1970-01-01T00:00:00Z";
 
-                        CancelRuns.Run(workflowName);
+                        if (startTimeCO.Value() == null)
+                        { 
+                            Console.WriteLine("Start time not provided, using 1970-01-01 as default value.");
+                        }
+
+                        string endTime = endTimeCO.Value() ?? DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ");
+
+                        if (String.IsNullOrEmpty(endTimeCO.Value()))
+                        {
+                            Console.WriteLine($"End time not provided, using current time ({endTime}) by default.");
+                        }
+
+                        startTime = DateTime.Parse(startTime).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+                        endTime = DateTime.Parse(endTime).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ");
+
+                        CancelRuns.Run(workflowName, startTime, endTime);
 
                         return 0;
                     });
@@ -595,6 +613,8 @@ namespace LogicAppAdvancedTool
                     CommandOption endTimeCO = c.Option("-et|--endTime", "(Manadatory) End time of time peroid (format in yyyy-MM-ddTHH:mm:ssZ).", CommandOptionType.SingleValue).IsRequired();
                     CommandOption ignoreProcessedCO = c.Option("-ignore|--ignoreProcessed", "(Optional) Whether need to ignore the runs already be resubmitted in previous executions. True or False (default vaule is true).", CommandOptionType.SingleValue);
                     CommandOption statusCO = c.Option("-s|--status", "(Optional) Filter which status of runs need to be resubmitted (Default value is Failed). Available parameters are \"Cancelled\", \"Succeeded\" and \"Failed\".", CommandOptionType.SingleValue);
+                    CommandOption actionNameCO = c.Option("-an|--actionName", "(Optional) Action name for key word filter feature. If contains space, then quote this value.", CommandOptionType.SingleValue);
+                    CommandOption keywordCO = c.Option("-k|--keyword", "(Optional) Key word for action outputs/errors filtering. If contains space, then quote this value.", CommandOptionType.SingleValue);
 
                     c.HelpOption("-?");
                     c.Description = "Resubmit all failed runs of a specific workflow within provided time peroid. If we have large count of runs need to be resubmitted, we will hit throttling (~50 execution per 5 minutes) but it will be handled internally.";
@@ -606,6 +626,14 @@ namespace LogicAppAdvancedTool
                         DateTime st = DateTime.Parse(startTimeCO.Value());
                         DateTime et = DateTime.Parse(endTimeCO.Value());
 
+                        string actionName = actionNameCO.Value();
+                        string keyword = keywordCO.Value();
+
+                        if (String.IsNullOrEmpty(actionName) ^ String.IsNullOrEmpty(keyword))
+                        {
+                            throw new UserInputException("ActionName (-an|--actionName) and Keyword (-k|--keyword) must be provided in pair.");
+                        }
+
                         if (st > et)
                         {
                             throw new UserInputException("Provided end time is earlier than start time, please correct.");
@@ -615,14 +643,14 @@ namespace LogicAppAdvancedTool
                         string endTime = et.ToString("yyyy-MM-ddTHH:mm:ssZ");
                         bool ignoreProcessed = bool.Parse(ignoreProcessedCO.Value() ?? "true");
 
-                        string status = (statusCO.Value()?? "failed").ToLower();
+                        string status = (statusCO.Value() ?? "Failed").ToLower();
 
                         if (status != "failed" && status != "succeeded" && status != "cancelled")
                         {
                             Console.WriteLine("Invalid value of parameter \"status\", available parameters are \"Cancelled\", \"Succeeded\" and \"Failed\".");
                         }
 
-                        BatchResubmit.Run(workflowName, startTime, endTime, ignoreProcessed, status);
+                        BatchResubmit.Run(workflowName, startTime, endTime, ignoreProcessed, status, actionName, keyword);
 
                         return 0;
                     });
@@ -834,6 +862,46 @@ namespace LogicAppAdvancedTool
                 });
                 #endregion
 
+                #region Generate workflow callback Url SAS signature
+                app.Command("GenerateSAS", c => {
+
+                    CommandOption workflowCO = c.Option("-wf|--workflow", "(Mandatory) The workflow name you need to generate primary/secondary SAS signature.", CommandOptionType.SingleValue).IsRequired();
+
+                    c.HelpOption("-?");
+                    c.Description = "Restore a deleted workflow with specific version.";
+
+                    c.OnExecute(() =>
+                    {
+                        string workflowName = workflowCO.Value();
+
+                        GenerateSAS.Run(workflowName);
+
+                        return 0;
+                    });
+                });
+                #endregion
+
+                #region Disable workflows
+                app.Command("DisableWorkflows", c => {
+
+                    CommandOption operationCO = c.Option("-op|--operation", "(Mandatory) The operation you would like to execute. Only can be \"Disable\" or \"Restore\".", CommandOptionType.SingleValue).IsRequired();
+
+                    c.HelpOption("-?");
+                    c.Description = "Disable all workflows in Logic App STD. Can be used when runtime keeps crashing and cannot disable via portal. After execute Disable command, it will generate a file named \"OriginalStatus.json\" for restoring.";
+
+                    c.OnExecute(() =>
+                    {
+                        CommonOperations.PromptConfirmation("This command requests Logic App System-Assigned MI assigned with \"Logic App Standard Contributor\" role");
+
+                        string operation = operationCO.Value().ToLower();
+                        WorkflowManagement.Run(operation);
+
+                        return 0;
+                    });
+
+                });
+                #endregion
+
                 #region Internal tools
                 app.Command("Tools", c => {
 
@@ -972,15 +1040,123 @@ namespace LogicAppAdvancedTool
                         });
                     });
                     #endregion
+
+                    #region Convert Instance Name
+                    c.Command("ConvertInstanceName", sub =>
+                    {
+                        sub.HelpOption("-?");
+                        sub.Description = "Convert instance name of Azure portal <--> Kusto log's role instance name.";
+
+                        CommandOption instanceNameCO = sub.Option("-n|--name", "(Mandatory) The instance name need to be converted.", CommandOptionType.SingleValue).IsRequired();
+
+                        sub.OnExecute(() =>
+                        {
+                            string instanceName = instanceNameCO.Value();
+
+                            Tools.InstanceNameConverter(instanceName.ToUpper());
+
+                            return 0;
+                        });
+                    });
+                    #endregion
+
+                    #region Clean up workflow folder
+                    c.Command("CleanWorkflowFolder", sub =>
+                    {
+                        sub.HelpOption("-?");
+                        sub.Description = "Remove all the sub-folders and files from workflow folder expect workflow.json";
+
+                        sub.OnExecute(() =>
+                        {
+                            Tools.CleanUpWorkflowFolder();
+
+                            return 0;
+                        });
+                    });
+                    #endregion
+
+                    #region Back Public Bundle
+                    c.Command("BackupBundles", sub =>
+                    {
+                        sub.HelpOption("-?");
+                        sub.Description = "Backup all the exisiting public bundles in a storage account blob container.";
+
+                        CommandOption storageAccountCO = sub.Option("-sa|--storageAccount", "(Mandatory) The target storage account.", CommandOptionType.SingleValue).IsRequired();
+                        CommandOption containerCO = sub.Option("-c|--container", "(Mandatory) The target blob container.", CommandOptionType.SingleValue).IsRequired();
+
+                        sub.OnExecute(() =>
+                        {
+                            string storageAccount = storageAccountCO.Value();
+                            string containerName = containerCO.Value();
+
+                            Tools.BackupBundles(storageAccount, containerName);
+
+                            return 0;
+                        });
+                    });
+                    #endregion
+
+                    #region Rollback Bundle
+                    c.Command("RollbackBundle", sub =>
+                    {
+                        sub.HelpOption("-?");
+                        sub.Description = "Rollback a pervious version of public bundle which stored as Storage Blob";
+
+                        CommandOption storageAccountCO = sub.Option("-sa|--storageAccount", "(Mandatory) The target storage account.", CommandOptionType.SingleValue).IsRequired();
+                        CommandOption containerCO = sub.Option("-c|--container", "(Mandatory) The blob container.", CommandOptionType.SingleValue).IsRequired();
+                        CommandOption blobNameCO = sub.Option("-b|--blobName", "(Mandatory) The blob name of bundle backup file.", CommandOptionType.SingleValue).IsRequired();
+                        CommandOption bundleVersionCO = sub.Option("-bv|--bundleVersion", "(Mandatory) The target bundle version.", CommandOptionType.SingleValue).IsRequired();
+                        CommandOption anonymousCO = sub.Option("-a|--anonymous", "Whether blob enabled anonymous access. If not, then it will use Logic App system-assigned MI for authentication.", CommandOptionType.SingleValue);
+
+                        sub.OnExecute(() =>
+                        {
+                            string storageAccount = storageAccountCO.Value();
+                            string containerName = containerCO.Value();
+                            string blobName = blobNameCO.Value();
+                            string bundleVersion = bundleVersionCO.Value();
+                            bool anonymous = bool.Parse(anonymousCO.Value() ?? "false");
+
+                            Tools.RollbackBundle(storageAccount, containerName, blobName, bundleVersion, anonymous);
+
+                            return 0;
+                        });
+                    });
+                    #endregion
+
+                    #region Internal usage for development debugging
+                    c.Command("DevDebug", sub =>
+                    {
+                        sub.HelpOption("-?");
+                        sub.Description = "Test";
+
+
+                        sub.OnExecute(() =>
+                        {
+                            Tools.DevDebug();
+
+                            return 0;
+                        });
+                    });
+                    #endregion
                 });
                 #endregion
-
+                
                 //TODO:
+                //1. Convert public bundle to private bundle
+                //2. support for multiple SA table
+                
 
                 app.Execute(args);
             }
             catch (Exception ex)
             {
+                if (ex.Message == "Enumeration already finished.")
+                {
+                    Console.WriteLine($"Cannot find command {args[0]}, please revew your input or create a Github issue (https://github.com/microsoft/Logic-App-STD-Advanced-Tools/issues) if command is correct.");
+
+                    return;
+                }
+
                 Console.WriteLine(ex.Message);
 
                 if (!(ex is ExpectedException))     //Print stack trace if it is not related to user input

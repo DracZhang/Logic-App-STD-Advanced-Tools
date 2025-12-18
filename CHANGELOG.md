@@ -1,3 +1,28 @@
+2025-05-15
+1. Added new command "BackupBundles" for backup all existing public bundles
+
+2025-04-21
+1. BatchResubmit command now support for filtering runs based on action name and keyword via provding -an and -k options.
+
+2025-03-28
+1. Added supportiabilty for connecting Logic App STD backend Storage Account via user-assgned MI as per appsettings.
+
+2025-03-17
+1. "CancelRuns" command now supports specify time period via -st/-et parameters.
+
+2025-03-03
+1. Added a new command "DisableWorkflows".
+
+2025-02-13
+1. Added "GenerateSAS" command which can generate Http trigger's callback url with primary and secondary access signature.
+2. Fixed most of warning.
+
+2024-12-09
+1. "CancelRuns" command now lists running/waiting instances via pageable table query for memory consideration.
+
+2024-11-26
+1. Fixed a bug which CompressUtility missed method to decompress deflate content.
+
 2024-11-21
 1. Removed "RestoreAll" command
 2. Added sub command "DecodeZSTD" in "Tools" command for decode binary content which compressed via zstd

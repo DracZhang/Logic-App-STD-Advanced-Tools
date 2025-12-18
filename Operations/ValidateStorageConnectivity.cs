@@ -16,14 +16,14 @@ namespace LogicAppAdvancedTool.Operations
         {
             List<BackendStorageValidator> validators = new List<BackendStorageValidator>
                 {
-                    new BackendStorageValidator(new StorageConnectionInfo(AppSettings.ConnectionString, StorageServiceType.Blob)),
-                    new BackendStorageValidator(new StorageConnectionInfo(AppSettings.ConnectionString, StorageServiceType.Queue)),
-                    new BackendStorageValidator(new StorageConnectionInfo(AppSettings.ConnectionString, StorageServiceType.Table))
+                    new BackendStorageValidator(new StorageConnectionInfo(StorageServiceType.Blob)),
+                    new BackendStorageValidator(new StorageConnectionInfo(StorageServiceType.Queue)),
+                    new BackendStorageValidator(new StorageConnectionInfo(StorageServiceType.Table))
                 };
 
             if (AppSettings.FileShareConnectionString != null)
             {
-                validators.Add(new BackendStorageValidator(new StorageConnectionInfo(AppSettings.FileShareConnectionString, StorageServiceType.File)));
+                validators.Add(new BackendStorageValidator(new StorageConnectionInfo(StorageServiceType.File)));
                 Console.WriteLine($"Successfully retrieved Storage Account information from environment variables.");
             }
             else
@@ -41,7 +41,7 @@ namespace LogicAppAdvancedTool.Operations
 
                 Console.WriteLine("IP list of Storage Account service tag has been retrieved successfully.");
             }
-            catch (Exception ex)
+            catch
             {
                 Console.WriteLine("Failed to fetch service tag of Storage, public/private IP validation will be skipped.");
             }

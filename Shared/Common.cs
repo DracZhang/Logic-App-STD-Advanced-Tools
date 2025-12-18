@@ -33,35 +33,6 @@ namespace LogicAppAdvancedTool
             }
         }
 
-        public static string GenerateLogicAppPrefix()
-        {
-            return StoragePrefixGenerator.Generate(AppSettings.LogicAppName.ToLower());
-        }
-
-        public static string GenerateWorkflowTablePrefixByFlowID(string workflowID)
-        {
-            string logicAppPrefix = StoragePrefixGenerator.Generate(AppSettings.LogicAppName.ToLower());
-
-            string workflowPrefix = StoragePrefixGenerator.Generate(workflowID.ToLower());
-
-            return $"{logicAppPrefix}{workflowPrefix}";
-        }
-
-        public static string GenerateWorkflowTablePrefix(string workflowName)
-        {
-            //We may have multiple flow IDs with same workflow name, so use FLOWLOOKUP key to get current version of workflow
-            List<TableEntity> tableEntities = TableOperations.QueryCurrentWorkflowByName(workflowName, new string[] { "FlowId" });
-
-            if (tableEntities.Count() == 0)
-            {
-                throw new UserInputException($"{workflowName} cannot be found in storage table, please check whether workflow name is correct.");
-            }
-
-            string workflowID = tableEntities.First<TableEntity>().GetString("FlowId");
-
-            return GenerateWorkflowTablePrefixByFlowID(workflowID);
-        }
-
         public static List<string> ListFlowIDsByName(string workflowName)
         {
             List<string> ids = TableOperations.QueryMainTable($"FlowName eq '{workflowName}'", new string[] { "FlowId"})
@@ -148,13 +119,12 @@ namespace LogicAppAdvancedTool
         #region Storage operation
         public static string GetBlobContent(string blobUri, int contentSize = -1)
         {
-            Uri uri = new Uri(blobUri);
-            StorageConnectionInfo info = new StorageConnectionInfo(AppSettings.ConnectionString, StorageServiceType.Blob);
-            StorageSharedKeyCredential cred = new StorageSharedKeyCredential(info.AccountName, info.AccountKey);
-
-            BlobClient client = new BlobClient(uri, cred);
+            string containerName = blobUri.Split('/')[3];
+            string blobName = blobUri.Split("/")[4];
+            BlobClient client = StorageClientCreator.GenerateBlobServiceClient().GetBlobContainerClient(containerName).GetBlobClient(blobName);
 
             long blobSize = client.GetProperties().Value.ContentLength;
+
 
             //If content size is specified and blob size is larger than content size, return empty string
             if (contentSize != -1 && blobSize > contentSize)

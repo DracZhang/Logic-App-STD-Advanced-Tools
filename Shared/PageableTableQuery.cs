@@ -12,23 +12,23 @@ namespace LogicAppAdvancedTool
         private Pageable<TableEntity> pageableEntities;
         private string continuationToken;
         private int PageSize { get; set; }
+        public int PageCount { get; private set; }
 
-        public bool HasNextPage { get; set; }
+        public bool HasNextPage { get; private set; }
 
-        public PageableTableQuery(string connectionString, string tableName, string query, string[] select = null, int pageSize = 1000)
+        public PageableTableQuery(string tableName, string query, string[] select = null, int pageSize = 1000)
         {
-            HasNextPage = true;
-            PageSize = pageSize;
-
-            TableServiceClient serviceClient = new TableServiceClient(AppSettings.ConnectionString);
-            Pageable<TableItem> results = serviceClient.Query(filter: $"TableName eq '{tableName}'");
-
-            if (results.Count() == 0)
+            if (pageSize > 1000)
             {
-                throw new UserInputException($"Cannot find table named {tableName}, please review your input");
+                pageSize = 1000;
+                Console.WriteLine($"Page size cannot be larger than 1000, change to 1000 for memory consideration.");
             }
 
-            TableClient tableClient = new TableClient(connectionString, tableName);
+            HasNextPage = true;
+            PageSize = pageSize;
+            PageCount = 1;
+
+            TableClient tableClient = TableOperations.GenerateTableClient(tableName);
             pageableEntities = tableClient.Query<TableEntity>(filter: query, select: select, maxPerPage: PageSize);
         }
 
@@ -43,6 +43,8 @@ namespace LogicAppAdvancedTool
             {
                 HasNextPage = false;
             }
+
+            PageCount++;
 
             return page.Values.ToList();
         }

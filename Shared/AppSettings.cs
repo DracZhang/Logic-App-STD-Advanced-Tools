@@ -1,4 +1,5 @@
-﻿using LogicAppAdvancedTool.Structures;
+﻿using Azure.Core;
+using LogicAppAdvancedTool.Structures;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -13,6 +14,46 @@ namespace LogicAppAdvancedTool
             get
             {
                 return Environment.GetEnvironmentVariable("AzureWebJobsStorage");
+            }
+        }
+
+        public static string TableServiceUri
+        {
+            get
+            {
+                return Environment.GetEnvironmentVariable("AzureWebJobsStorage__tableServiceUri");
+            }
+        }
+
+        public static string BlobServiceUri
+        {
+            get
+            {
+                return Environment.GetEnvironmentVariable("AzureWebJobsStorage__blobServiceUri");
+            }
+        }
+
+        public static string QueueServiceUri
+        {
+            get
+            {
+                return Environment.GetEnvironmentVariable("AzureWebJobsStorage__queueServiceUri");
+            }
+        }
+
+        public static string ManagedIdentityResourceID
+        {
+            get
+            {
+                return Environment.GetEnvironmentVariable("AzureWebJobsStorage__managedIdentityResourceId");
+            }
+        }
+
+        public static string HostID
+        {
+            get
+            {
+                return Environment.GetEnvironmentVariable("AzureFunctionsWebHost__hostId") ?? LogicAppName;
             }
         }
 
@@ -72,6 +113,14 @@ namespace LogicAppAdvancedTool
             }
         }
 
+        public static string Hostname
+        {
+            get
+            {
+                return Environment.GetEnvironmentVariable("WEBSITE_HOSTNAME");
+            }
+        }
+
         public static string RootFolder
         {
             get
@@ -86,6 +135,11 @@ namespace LogicAppAdvancedTool
             {
                 return $"https://management.azure.com/subscriptions/{SubscriptionID}/resourceGroups/{ResourceGroup}/providers/Microsoft.Web/sites/{LogicAppName}";
             }
+        }
+
+        public static string GetValueByName(string name)
+        { 
+            return Environment.GetEnvironmentVariable(name);
         }
 
         public static string GetRemoteAppsettings()

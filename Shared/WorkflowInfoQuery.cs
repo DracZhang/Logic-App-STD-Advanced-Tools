@@ -30,6 +30,21 @@ namespace LogicAppAdvancedTool.Shared
             return entities;
         }
 
+        public static List<TableEntity> ListCurrentWorkflows(params string[] select)
+        {
+            List<string> querySelect = new List<string> { "FlowName", "ChangedTime", "Kind" };
+
+            querySelect.AddRange(select);
+            List<TableEntity> entities = TableOperations.QuerySubscriptionSummaryTable($"FlowName ne 'null'", select: querySelect.Distinct().ToArray());
+
+            if (entities.Count == 0)
+            {
+                throw new UserInputException("No workflows found.");
+            }
+
+            return entities;
+        }
+
         public static List<TableEntity> ListWorkflowsByName(string workflowName, params string[] select)
         {
             List<string> querySelect = new List<string> { "FlowId", "ChangedTime", "Kind" };
@@ -65,6 +80,31 @@ namespace LogicAppAdvancedTool.Shared
             }
 
             return entities;
+        }
+
+        public static string QueryWorkflowID(string workflowName)
+        {
+            List<TableEntity> tableEntities = TableOperations.QueryCurrentWorkflowByName(workflowName, new string[] { "FlowId" });
+
+            if (tableEntities.Count() == 0)
+            {
+                throw new UserInputException($"No existing workflow named {workflowName}, please review your input.");
+            }
+
+            return tableEntities.First<TableEntity>().GetString("FlowId");
+        }
+
+        public static string QueryDefinitionByFlowName(string workflowName)
+        {
+            List<TableEntity> tableEntities = TableOperations.QueryCurrentWorkflowByName(workflowName, new string[] { "DefinitionCompressed" });
+
+            if (tableEntities.Count() == 0)
+            {
+                throw new UserInputException($"No existing workflow named {workflowName}, please review your input.");
+            }
+
+            byte[] definitionCompressed = tableEntities.First<TableEntity>().GetBinary("DefinitionCompressed");
+            return CommonOperations.DecompressContent(definitionCompressed);
         }
     }
 }

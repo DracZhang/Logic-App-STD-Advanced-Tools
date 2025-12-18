@@ -17,18 +17,18 @@ namespace LogicAppAdvancedTool.Operations
             List<string> tablePrefixs = new List<string>();
             if (string.IsNullOrEmpty(workflowName))
             {
-                tablePrefixs.Add(CommonOperations.GenerateLogicAppPrefix());
+                tablePrefixs.Add(StoragePrefixGenerator.GenerateLogicAppPrefix());
             }
             else
             {
                 List<string> flowIDs = CommonOperations.ListFlowIDsByName(workflowName);
                 foreach (string flowID in flowIDs)
                 {
-                    tablePrefixs.Add(CommonOperations.GenerateWorkflowTablePrefixByFlowID(flowID));
+                    tablePrefixs.Add(StoragePrefixGenerator.GenerateWorkflowTablePrefixByFlowID(flowID));
                 }
             }
 
-            TableServiceClient client = new TableServiceClient(AppSettings.ConnectionString);
+            TableServiceClient client = StorageClientCreator.GenerateTableServiceClient();
             List<string> matchedTables = new List<string>();
 
             foreach (string prefix in tablePrefixs)

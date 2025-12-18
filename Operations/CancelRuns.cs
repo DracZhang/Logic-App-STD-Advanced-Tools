@@ -7,58 +7,77 @@ namespace LogicAppAdvancedTool.Operations
 {
     public static class CancelRuns
     {
-        public static void Run(string workflowName)
+        public static void Run(string workflowName, string startTime, string endTime)
         {
             CommonOperations.AlertExperimentalFeature();
 
-            string query = $"Status eq 'Running' or Status eq 'Waiting'";
-            List<TableEntity> inprocessRuns = TableOperations.QueryRunTable(workflowName, query, new string[] { "Status", "PartitionKey", "RowKey" });
+            string runTableName = $"flow{StoragePrefixGenerator.GenerateWorkflowTablePrefixByName(workflowName)}runs";
 
-            if (inprocessRuns.Count == 0)
+            //TableClient runTableClient = new TableClient(AppSettings.ConnectionString, runTableName);
+            //Just leaving the original code for reference
+            TableClient runTableClient = TableOperations.GenerateTableClient(runTableName);
+
+            string query = $"(Status eq 'Running' or Status eq 'Waiting') and (CreatedTime ge datetime'{startTime}' and CreatedTime le datetime'{endTime}')";
+
+            int totalCount = 0;
+            PageableTableQuery queryForCount = new PageableTableQuery(runTableName, query, new string[] { "Status", "PartitionKey", "RowKey" }, 1000);
+            while (queryForCount.HasNextPage)
+            { 
+                totalCount += queryForCount.GetNextPage().Count;
+            }
+
+            if (totalCount == 0)
             {
                 throw new UserInputException($"There's no running/waiting runs of workflow {workflowName}");
             }
 
-            Console.WriteLine($"Found {inprocessRuns.Count} run(s) in run table.");
+            Console.WriteLine($"Total {totalCount} running/waiting run(s) found. The final cancelled count might be slightly different due to workflow runs finished during cancellation.");
 
             CommonOperations.PromptConfirmation("1. Cancel all the running instances will cause data lossing for any running/waiting instances.\r\n2. Run history and resubmit feature will be unavailable for all waiting runs.");
 
-            string prefix = CommonOperations.GenerateWorkflowTablePrefix(workflowName);
-            string runTableName = $"flow{prefix}runs";
+            int cancelledCount = 0;
+            int failedCount = 0;
 
-            TableClient runTableClient = new TableClient(AppSettings.ConnectionString, runTableName);
-            
-            int CancelledCount = 0;
-            int FailedCount = 0;
-
-            foreach (TableEntity te in inprocessRuns)
+            PageableTableQuery pageableTableQuery = new PageableTableQuery(runTableName, query, new string[] { "Status", "PartitionKey", "RowKey" }, 1000);
+            while (pageableTableQuery.HasNextPage)
             {
-                TableEntity updatedEntity = new TableEntity
-                {
-                    { "Status", "Cancelled" }
-                };
+                List<TableEntity> entities = pageableTableQuery.GetNextPage();
 
-                updatedEntity.PartitionKey = te.PartitionKey;
-                updatedEntity.RowKey = te.RowKey;
+                foreach (TableEntity te in entities)
+                {
+                    TableEntity updatedEntity = new TableEntity
+                    {
+                        { "Status", "Cancelled" }
+                    };
 
-                //When instances status changed (eg: waiting -> running, running -> succeeded), the update will fail
-                //it is an expected behavior, but we need to run the command again for verification
-                try
-                {
-                    runTableClient.UpdateEntity<TableEntity>(updatedEntity, te.ETag);
-                    CancelledCount++;
-                }
-                catch (Exception ex)
-                {
-                    FailedCount++;
+                    updatedEntity.PartitionKey = te.PartitionKey;
+                    updatedEntity.RowKey = te.RowKey;
+
+                    //When instances status changed (eg: waiting -> running, running -> succeeded), the update will fail
+                    //it is an expected behavior, but we need to run the command again for verification
+                    try
+                    {
+                        runTableClient.UpdateEntity<TableEntity>(updatedEntity, te.ETag);
+                        cancelledCount++;
+
+                        //no accurate count for the total count of running/waiting instances, so just print the count to show the progress
+                        if (cancelledCount % 1000 == 0)
+                        {
+                            Console.WriteLine($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}: {cancelledCount} runs has been cancelled, still processing");
+                        }
+                    }
+                    catch
+                    {
+                        failedCount++;
+                    }
                 }
             }
 
-            Console.WriteLine($"{CancelledCount} runs cancelled sucessfully");
+            Console.WriteLine($"Cancellation has finished, total {cancelledCount} runs cancelled sucessfully");
 
-            if (FailedCount != 0)
-            { 
-                Console.WriteLine($"{FailedCount} runs cancelled failed due to status changed (it is an expected behavior while runs finished during canceling), please run command again to verify whether still have running instance or not.");
+            if (failedCount != 0)
+            {
+                Console.WriteLine($"{failedCount} runs cancelled failed due to status changed (it is an expected behavior while runs finished during canceling), please run command again to verify whether still have running instance or not.");
             }
         }
     }

@@ -21,10 +21,10 @@ namespace LogicAppAdvancedTool.Operations
 
             int index = 0;
 
-            string tableName = $"flow{CommonOperations.GenerateWorkflowTablePrefixByFlowID(selectedWorkflowId)}{date}t000000zactions";
+            string tableName = $"flow{StoragePrefixGenerator.GenerateWorkflowTablePrefixByFlowID(selectedWorkflowId)}{date}t000000zactions";
             string query = "InputsLinkCompressed ne '' or OutputsLinkCompressed ne ''";
 
-            PageableTableQuery pageableTableQuery = new PageableTableQuery(AppSettings.ConnectionString, tableName, query);
+            PageableTableQuery pageableTableQuery = new PageableTableQuery(tableName, query);
             while (pageableTableQuery.HasNextPage)
             {
                 Console.WriteLine($"Processing page {++index}");
@@ -67,15 +67,6 @@ namespace LogicAppAdvancedTool.Operations
             SaveLogs(filteredEntities, fileName);
         }
 
-        private static bool SearchForKeyword(string content, string keyword)
-        {
-            if (!String.IsNullOrEmpty(content))
-            {
-                return content.Contains(keyword);
-            }
-
-            return false;
-        }
         private static void SaveLogs(List<TableEntity> tableEntities, string fileName)
         {
             Dictionary<string, List<HistoryRecords>> records = new Dictionary<string, List<HistoryRecords>>();
