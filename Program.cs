@@ -18,6 +18,7 @@ namespace LogicAppAdvancedTool
 
             try
             {
+                #Test
                 #region For feature testing ONLY run when debug
 #if DEBUG
                 Tools.FeatureTesting();           
