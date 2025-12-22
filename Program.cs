@@ -1152,7 +1152,7 @@ namespace LogicAppAdvancedTool
             {
                 if (ex.Message == "Enumeration already finished.")
                 {
-                    Console.WriteLine($"Cannot find command {args[0]}, please revew your input or create a Github issue (https://github.com/microsoft/Logic-App-STD-Advanced-Tools/issues) if command is correct.");
+                    Console.WriteLine($"Cannot find command {args[0]}, please revew your input or create a Github issue (https://github.com/DracZhang/Logic-App-STD-Advanced-Tools/issues) if command is correct.");
 
                     return;
                 }

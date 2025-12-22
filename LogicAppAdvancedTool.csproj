@@ -8,6 +8,7 @@
 		<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
 		<IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+		<PublishRelease>True</PublishRelease>
 		<!-- Disable auto-generation of assembly attributes to prevent duplicates with manual AssemblyInfo.cs -->
 		<GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
 		<GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
