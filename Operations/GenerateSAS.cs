@@ -38,7 +38,7 @@ namespace LogicAppAdvancedTool.Operations
             Console.WriteLine($"Secondary SAS: {secondarySignature}");
             string sp = $"{permission}";
             Console.WriteLine($"Primary callback url: https://{hostName}:443/api/{workflowName}/triggers/{triggerName}/invoke?api-version=2022-05-01&sp={HttpUtility.UrlEncode(sp)}&sv=1.0&sig={primarySignature}");
-            Console.WriteLine($"Primary callback url: https://{hostName}:443/api/{workflowName}/triggers/{triggerName}/invoke?api-version=2022-05-01&sp={HttpUtility.UrlEncode(sp)}&sv=1.0&sig={secondarySignature}");
+            Console.WriteLine($"Secondary callback url: https://{hostName}:443/api/{workflowName}/triggers/{triggerName}/invoke?api-version=2022-05-01&sp={HttpUtility.UrlEncode(sp)}&sv=1.0&sig={secondarySignature}");
         }
 
         private static string GenerateSignature(string flowID, string sv, string permission, string accessKey)

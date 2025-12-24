@@ -375,7 +375,7 @@ namespace LogicAppAdvancedTool
                 });
                 #endregion
 
-                #region Check Connectivity
+                #region Check Backend Storage Connectivity
                 app.Command("ValidateStorageConnectivity", c =>
                 {
                     c.HelpOption("-?");
