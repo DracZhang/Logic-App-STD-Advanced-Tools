@@ -115,17 +115,17 @@ namespace LogicAppAdvancedTool.Operations
 
         public void CheckForPE(List<string> serviceSubnets)
         {
+            IsPrivateEndpoint = PrivateEndpointStatus.Yes;
+
             foreach (string subnet in serviceSubnets)
             {
                 if (CommonOperations.IsIpInSubnet(IPs[0].ToString(), subnet))       //assume for each Storage Account endpoint, only 1 IP
                 {
-                    IsPrivateEndpoint = PrivateEndpointStatus.Yes;
+                    IsPrivateEndpoint = PrivateEndpointStatus.No;
 
                     break;
                 }
             }
-
-            IsPrivateEndpoint = PrivateEndpointStatus.No;
         }
 
         public string GetIPsAsString()
