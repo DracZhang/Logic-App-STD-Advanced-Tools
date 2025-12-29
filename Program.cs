@@ -868,7 +868,7 @@ namespace LogicAppAdvancedTool
                     CommandOption workflowCO = c.Option("-wf|--workflow", "(Mandatory) The workflow name you need to generate primary/secondary SAS signature.", CommandOptionType.SingleValue).IsRequired();
 
                     c.HelpOption("-?");
-                    c.Description = "Restore a deleted workflow with specific version.";
+                    c.Description = "Generate specific workflow's callback url with primary/secondary SAS key.";
 
                     c.OnExecute(() =>
                     {
